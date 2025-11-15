@@ -1,18 +1,20 @@
+
 import numpy as np
 from connect4.policy import Policy
 from connect4.connect_state import ConnectState
-from typing import override
+
 
 class juanes_agente(Policy):
 
-    @override
+  
     def mount(self) -> None:
         self.jugadas_del_agente = 0
        
 
-    @override
+    
     def act(self, s: np.ndarray) -> int:
         estado = ConnectState(board=s)
+        self.jugadas_del_agente = 0
         available_cols = estado.get_free_cols()
         if self.jugadas_del_agente == 0:
             epsilon = 1 
