@@ -33,11 +33,11 @@ class juanes_agente(Policy):
                 estado_simulado = estado_simulado.transition(movimiento_aleatorio)
             return estado_simulado.get_winner()
         
-        def bloquear_ganar_oponente(estado: ConnectState, available_cols: list) -> int:
-                nuevo_estado = estado.transition(col)  # Simula si jugando ahi ganaria el oponente
-                if nuevo_estado.is_final() and nuevo_estado.get_winner() == -estado.player:
-                    return col  # Bloquear jugando aquí
-          
+        def bloquear_ganar_oponente(estado: ConnectState, col: int) -> int | None:
+            nuevo_estado = estado.transition(col)
+            if nuevo_estado.is_final() and nuevo_estado.get_winner() == -estado.player:
+                return col
+            return None
             
         def jugar_con_montecarlo(estado: ConnectState, numero_de_simulaciones: int = 200) -> int:
             victorias = {}
