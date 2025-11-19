@@ -1,139 +1,154 @@
 import numpy as np
 from connect4.policy import Policy
-#from typing import override
 import random
+from connect4.connect_state import ConnectState
 
 
 class SebastianAgent(Policy):
     def __init__(self):
         self.generador = random.Random()
-        self.epsilon = 0.2 # por ahora un epsilon aleatorio
-        self.U_total = {}      
+        self.epsilon = 0.2
+        self.U_total = {}
         self.N_visitas = {}
         self.episodio_completo = []
+        self.jugadas_del_agente = 0
 
- #   @override
     def mount(self) -> None:
         self.episodio_completo = []
+        self.jugadas_del_agente = 0
 
     def id_estado(self, board: np.ndarray, jugador: int) -> str:
         plano = board.flatten()
-        lista_caracteres = []
-        i = 0
-        while i < plano.shape[0]:
-            celda = plano[i]
+        lista = []
+        for celda in plano:
             if celda == -1:
-                lista_caracteres.append("R")
+                lista.append("R")
             elif celda == 1:
-                lista_caracteres.append("Y")
+                lista.append("Y")
             else:
-                lista_caracteres.append("0")
-            i = i + 1
+                lista.append("0")
 
-        lista_caracteres.append("|")
-        if jugador == -1:
-            lista_caracteres.append("R")
-        else:
-            lista_caracteres.append("Y")
+        lista.append("|")
+        lista.append("R" if jugador == -1 else "Y")
 
         estado = ""
-        j = 0
-        while j < len(lista_caracteres):
-            estado = estado + lista_caracteres[j]
-            j = j + 1
+        for x in lista:
+            estado += x
 
         return estado
 
-    def columnas_disponibles(self, board: np.ndarray):
-        cols = []
-        c = 0
-        while c < 7:
-            if board[0, c] == 0:
-                cols.append(c)
-            c = c + 1
-        return cols
+    def e_greedy(self, estado: str, acciones, tablero, jugador_actual) -> int:
+        #codigo de juanes de que en la primera jugada juegue en el centro
+        if self.jugadas_del_agente == 0 and jugador_actual == -1:
+            return 3
+        
+        
 
-    def e_greedy(self, estado: str, acciones: list[int]) -> int:
-        if len(acciones) == 0:
-            return 0
+        simulaciones = 20
 
-        k = 0
-        while k < len(acciones):
-            a = acciones[k]
+        for a in acciones:
             clave = (estado, a)
             if clave not in self.U_total:
                 self.U_total[clave] = 0.0
                 self.N_visitas[clave] = 0
-            k = k + 1
 
-        r = self.generador.random()
-        if r < self.epsilon:
-            indice = self.generador.randint(0, len(acciones) - 1)
-            return acciones[indice]
+            for _ in range(simulaciones):
+                recompensa = self.simular_partida(tablero, jugador_actual, a)
+                self.U_total[clave] += recompensa
+                self.N_visitas[clave] += 1
 
+        # Exploración
+        if self.generador.random() < self.epsilon:
+            return acciones[self.generador.randint(0, len(acciones) - 1)]
+
+        # Explotación
         mejor_accion = acciones[0]
         clave_mejor = (estado, mejor_accion)
-        visitas = self.N_visitas[clave_mejor]
+        mejor_valor = (
+            0.0
+            if self.N_visitas[clave_mejor] == 0
+            else self.U_total[clave_mejor] / self.N_visitas[clave_mejor]
+        )
 
-        if visitas == 0:
-            mejor_valor = 0.0
-        else:
-            mejor_valor = self.U_total[clave_mejor] / float(visitas)
-
-        t = 1
-        while t < len(acciones):
-            a = acciones[t]
+        for a in acciones[1:]:
             clave = (estado, a)
-            n = self.N_visitas[clave]
-            if n == 0:
-                q = 0.0
-            else:
-                q = self.U_total[clave] / float(n)
+            q = (
+                0.0
+                if self.N_visitas[clave] == 0
+                else self.U_total[clave] / self.N_visitas[clave]
+            )
             if q > mejor_valor:
                 mejor_valor = q
                 mejor_accion = a
-            t = t + 1
 
         return mejor_accion
 
-    def inc_update(self, recompensa_final: float):
-        pares_visitados = []
-        U = recompensa_final
-        idx = len(self.episodio_completo) - 1
+    def simular_partida(self, tablero, jugador_inicial, primera_accion):
+        estado = ConnectState(board=tablero, player=jugador_inicial)
 
-        while idx >= 0:
-            estado, accion = self.episodio_completo[idx]
-            clave = (estado, accion)
+        if not estado.is_applicable(primera_accion):
+            return 0.0
 
-            if clave not in pares_visitados:
-                pares_visitados.append(clave)
+        estado = estado.transition(primera_accion)
 
-                suma_anterior = self.U_total.get(clave, 0.0)
-                visitas_anteriores = self.N_visitas.get(clave, 0)
+        if estado.is_final():
+            ganador = estado.get_winner()
+            if ganador == jugador_inicial:
+                return 1.0
+            elif ganador == 0:
+                return 0.0
+            else:
+                return -1.0
 
-                nueva_suma = suma_anterior + U
-                nuevas_visitas = visitas_anteriores + 1
+        jugador = -jugador_inicial
 
-                self.U_total[clave] = nueva_suma
-                self.N_visitas[clave] = nuevas_visitas
+        while True:
+            cols = estado.get_free_cols()
+            if len(cols) == 0:
+                return 0.0
 
-            idx = idx - 1
+            col = cols[self.generador.randint(0, len(cols) - 1)]
+            estado = estado.transition(col)
 
- #   @override
+            if estado.is_final():
+                ganador = estado.get_winner()
+                if ganador == jugador_inicial:
+                    return 1.0
+                elif ganador == 0:
+                    return 0.0
+                else:
+                    return -1.0
+
+            jugador = -jugador
+
     def act(self, s: np.ndarray) -> int:
-        rojas = int(np.sum(s == -1))
-        amarillas = int(np.sum(s == 1))
-
-        if rojas == amarillas:
-            jugador_actual = -1
-        else:
-            jugador_actual = 1
-
-        acciones_posibles = self.columnas_disponibles(s)
+        estado_obj = ConnectState(board=s)
+        jugador_actual = estado_obj.player
+        acciones_posibles = estado_obj.get_free_cols()
         estado_actual = self.id_estado(s, jugador_actual)
 
-        accion = self.e_greedy(estado_actual, acciones_posibles)
+        #codigo de juanes de que si puede ganar que gane
+        for col in acciones_posibles:
+            test = ConnectState(board=s, player=jugador_actual)
+            nuevo = test.transition(col)
+            if nuevo.is_final() and nuevo.get_winner() == jugador_actual:
+                self.episodio_completo.append((estado_actual, col))
+                self.jugadas_del_agente += 1
+                return int(col)
+
+        #codifo de juanes de que si el oponente puede ganar que bloquee
+        for col in acciones_posibles:
+            test = ConnectState(board=s, player=-jugador_actual)
+            nuevo = test.transition(col)
+            if nuevo.is_final() and nuevo.get_winner() == -jugador_actual:
+                self.episodio_completo.append((estado_actual, col))
+                self.jugadas_del_agente += 1
+                return int(col)
+
+        #despues si probar montecarlo
+        accion = self.e_greedy(estado_actual, acciones_posibles, s, jugador_actual)
 
         self.episodio_completo.append((estado_actual, accion))
+        self.jugadas_del_agente += 1
 
         return int(accion)

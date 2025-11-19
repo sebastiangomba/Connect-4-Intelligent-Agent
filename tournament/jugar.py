@@ -1,7 +1,7 @@
 import numpy as np
 from connect4.connect_state import ConnectState
-#from groups.Group_A.policy import SebastianAgent
-from groups.Group_B.policy import juanes_agente  # cambia Group_A si tu carpeta se llama distinto
+from groups.Group_A.policy import SebastianAgent
+#from groups.Group_B.policy import juanes_agente  # cambia Group_A si tu carpeta se llama distinto
 
 
 def imprimir_tablero(board: np.ndarray):
@@ -12,8 +12,8 @@ def imprimir_tablero(board: np.ndarray):
 
 def jugar_contra_agente():
     estado = ConnectState()
-    #agente = SebastianAgent()
-    agente = juanes_agente()
+    agente = SebastianAgent()
+    #agente = juanes_agente()
 
     agente.mount()
 

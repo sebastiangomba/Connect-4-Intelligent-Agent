@@ -1,7 +1,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 
-from tournament.connect4.connect_state import ConnectState
+from connect4.connect_state import ConnectState
 
 
 class Policy(ABC):
