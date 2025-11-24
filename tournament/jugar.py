@@ -1,55 +1,86 @@
 import numpy as np
 from connect4.connect_state import ConnectState
 from groups.Group_A.policy import SebastianAgent
-#from groups.Group_B.policy import juanes_agente  # cambia Group_A si tu carpeta se llama distinto
 
 
-def imprimir_tablero(board: np.ndarray):
-    for fila in board:
-        print(" ".join(str(int(x)) for x in fila))
+def imprimir_tablero(estado: ConnectState):
+    board = estado.board  # matriz numpy 6x7
+
+    print("\n    0     1     2     3     4     5     6")
+    print("  +" + "-----+" * 7)
+
+    for r in range(board.shape[0]):
+        fila = "  |"
+        for c in range(board.shape[1]):
+            valor = board[r, c]
+            # Mostrar exactamente -1, 0, 1 con espacio fijo
+            ficha = f"{valor:>3}"  # ancho fijo de 3 chars
+            fila += f" {ficha} |"
+        print(fila)
+        print("  +" + "-----+" * 7)
     print()
 
 
-def jugar_contra_agente():
+def pedir_columna(estado: ConnectState) -> int:
+    free_cols = estado.get_free_cols()
+    while True:
+        entrada = input(f"Tu turno (1). Elige columna {free_cols}: ")
+        try:
+            col = int(entrada)
+        except ValueError:
+            print("Ingresa un número válido.")
+            continue
+
+        if col not in free_cols:
+            print("Columna inválida o llena. Intenta de nuevo.")
+            continue
+
+        return col
+
+
+def main():
     estado = ConnectState()
     agente = SebastianAgent()
-    #agente = juanes_agente()
-
     agente.mount()
 
-    print("Comienza el juego.")
-    print("Tú eres 1 (amarillo). El agente es -1 (rojo).")
-    imprimir_tablero(estado.board)
+    print("Conecta 4 — Tú eres 1, el agente es -1")
+    imprimir_tablero(estado)
 
     while not estado.is_final():
-        if estado.player == 1:
-            # TU TURNO (jugador 1 / amarillo)
-            while True:
-                try:
-                    col = int(input("Tu jugada (0-6): "))
-                    if not estado.is_applicable(col):
-                        print("Movimiento no válido, intenta otra columna.")
-                        continue
-                    break
-                except ValueError:
-                    print("Ingresa un número entre 0 y 6.")
-            estado = estado.transition(col)
-        else:
-            # TURNO DEL AGENTE (jugador -1 / rojo)
-            accion = agente.act(estado.board)
-            print(f"El agente juega columna {accion}")
-            estado = estado.transition(accion)
 
-        imprimir_tablero(estado.board)
+        # Turno del humano (1)
+        if estado.player == 1:
+            col = pedir_columna(estado)
+            estado = estado.transition(col)
+            imprimir_tablero(estado)
+
+            if estado.is_final():
+                break
+
+        # Turno del agente (-1)
+        else:
+            print("Turno del agente (-1)...")
+            col_agente = agente.act(estado.board.copy())
+
+            if not estado.is_applicable(col_agente):
+                free_cols = estado.get_free_cols()
+                col_agente = free_cols[0]
+
+            estado = estado.transition(col_agente)
+            imprimir_tablero(estado)
+
+            if estado.is_final():
+                break
 
     ganador = estado.get_winner()
+    print("\n=== RESULTADO ===")
     if ganador == 1:
-        print("Ganaste.")
+        print("Ganaste!")
     elif ganador == -1:
         print("El agente ganó.")
     else:
-        print("Empate (tablero lleno sin cuatro en línea).")
+        print("Empate (tablero lleno).")
 
 
 if __name__ == "__main__":
-    jugar_contra_agente()
+    main()

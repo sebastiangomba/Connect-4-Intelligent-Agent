@@ -4,7 +4,7 @@ import random
 from connect4.connect_state import ConnectState
 
 
-class SebastianAgent(Policy):
+class SebastianAgent2(Policy):
     def __init__(self):
         self.generador = random.Random()
         self.epsilon = 0.2 
@@ -124,24 +124,24 @@ class SebastianAgent(Policy):
         jugador_actual = estado_obj.player
         acciones_posibles = estado_obj.get_free_cols()
         estado_actual = self.id_estado(s, jugador_actual)
+        # ------ELIMINAMOS LAS REGLAS EMPIRICAS---------
+        # #codigo de juanes de que si puede ganar que gane
+        # for col in acciones_posibles:
+        #     test = ConnectState(board=s, player=jugador_actual)
+        #     nuevo = test.transition(col)
+        #     if nuevo.is_final() and nuevo.get_winner() == jugador_actual:
+        #         self.episodio_completo.append((estado_actual, col))
+        #         self.jugadas_del_agente += 1
+        #         return int(col)
 
-        #codigo de juanes de que si puede ganar que gane
-        for col in acciones_posibles:
-            test = ConnectState(board=s, player=jugador_actual)
-            nuevo = test.transition(col)
-            if nuevo.is_final() and nuevo.get_winner() == jugador_actual:
-                self.episodio_completo.append((estado_actual, col))
-                self.jugadas_del_agente += 1
-                return int(col)
-
-        #codifo de juanes de que si el oponente puede ganar que bloquee
-        for col in acciones_posibles:
-            test = ConnectState(board=s, player=-jugador_actual)
-            nuevo = test.transition(col)
-            if nuevo.is_final() and nuevo.get_winner() == -jugador_actual:
-                self.episodio_completo.append((estado_actual, col))
-                self.jugadas_del_agente += 1
-                return int(col)
+        # #codifo de juanes de que si el oponente puede ganar que bloquee
+        # for col in acciones_posibles:
+        #     test = ConnectState(board=s, player=-jugador_actual)
+        #     nuevo = test.transition(col)
+        #     if nuevo.is_final() and nuevo.get_winner() == -jugador_actual:
+        #         self.episodio_completo.append((estado_actual, col))
+        #         self.jugadas_del_agente += 1
+        #         return int(col)
 
         #despues si probar montecarlo
         accion = self.e_greedy(estado_actual, acciones_posibles, s, jugador_actual)
