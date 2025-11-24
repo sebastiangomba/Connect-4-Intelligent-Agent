@@ -1,89 +1,69 @@
 
 import numpy as np
+import math
+import random
 from connect4.policy import Policy
 from connect4.connect_state import ConnectState
 
 
 class juanes_agente(Policy):
+    def __init__(self):
+        self.episodio_completo = []
+        self.jugadas_del_agente = 0
 
-  
     def mount(self) -> None:
+        self.episodio_completo = []
         self.jugadas_del_agente = 0
-       
 
-    
+    def id_estado(self, board: np.ndarray, jugador: int) -> str:
+        plano = board.flatten()
+        lista = []
+        for celda in plano:
+            if celda == -1:
+                lista.append("R")
+            elif celda == 1:
+                lista.append("Y")
+            else:
+                lista.append("0")
+
+        lista.append("|")
+        lista.append("R" if jugador == -1 else "Y")
+
+        estado = ""
+        for x in lista:
+            estado += x
+
+        return estado
+
     def act(self, s: np.ndarray) -> int:
-        estado = ConnectState(board=s)
-        self.jugadas_del_agente = 0
-        available_cols = estado.get_free_cols()
-        if self.jugadas_del_agente == 0:
-            epsilon = 1 
-        else:
-            epsilon = 1 / self.jugadas_del_agente
-         
-        def puede_ganar(estado: ConnectState, col: int) -> int | None:
-            nuevo_estado = estado.transition(col)
-            if nuevo_estado.is_final() and nuevo_estado.get_winner() == estado.player:
-                return col
-            return None
-        
-        def simular_partida(estado: ConnectState) -> int:
-            estado_simulado = estado
-            while not estado_simulado.is_final():
-                movimientos_disponibles = estado_simulado.get_free_cols()
-                movimiento_aleatorio = np.random.choice(movimientos_disponibles)
-                estado_simulado = estado_simulado.transition(movimiento_aleatorio)
-            return estado_simulado.get_winner()
-        
-        def bloquear_ganar_oponente(estado: ConnectState, col: int) -> int | None:
-            nuevo_estado = estado.transition(col)
-            if nuevo_estado.is_final() and nuevo_estado.get_winner() == -estado.player:
-                return col
-            return None
-            
-        def jugar_con_montecarlo(estado: ConnectState, numero_de_simulaciones: int = 200) -> int:
-            victorias = {}
-            for col in estado.get_free_cols():
-                victorias[col] = 0
-                for i in range(numero_de_simulaciones):
-                    nuevo_estado = estado.transition(col)
-                    ganador = simular_partida(nuevo_estado)
-                    if ganador == estado.player:
-                        victorias[col] += 1
-            mejor_col = 0
-            max_victorias = 0
+        estado_obj = ConnectState(board=s)
+        jugador_actual = estado_obj.player
+        acciones_posibles = estado_obj.get_free_cols()
+        estado_actual = self.id_estado(s, jugador_actual)
 
-            for col, victorias_col in victorias.items():
-                if victorias_col > max_victorias:
-                    max_victorias = victorias_col
-                    mejor_col = col
+        #codigo de juanes de que si puede ganar que gane
+        for col in acciones_posibles:
+            test = ConnectState(board=s, player=jugador_actual)
+            nuevo = test.transition(col)
+            if nuevo.is_final() and nuevo.get_winner() == jugador_actual:
+                self.episodio_completo.append((estado_actual, col))
+                self.jugadas_del_agente += 1
+                return int(col)
 
-            return mejor_col
-            
-        
-        # jugada segun experiencia
-        if self.jugadas_del_agente == 0:
-            if 3 in available_cols:
+        #codigo de juanes de que si el oponente puede ganar que bloquee
+        for col in acciones_posibles:
+            test = ConnectState(board=s, player=-jugador_actual)
+            nuevo = test.transition(col)
+            if nuevo.is_final() and nuevo.get_winner() == -jugador_actual:
+                self.episodio_completo.append((estado_actual, col))
                 self.jugadas_del_agente += 1
-                return 3
-            else :
-                self.jugadas_del_agente += 1
-                return 1  
-       
-        for col in available_cols:
-            if puede_ganar(estado, col) is not None:
-                self.jugadas_del_agente += 1
-                return col
-        for col in available_cols: 
-            if bloquear_ganar_oponente(estado, col) is not None:
-                self.jugadas_del_agente += 1
-                return col
-                
-        # Si no hay jugadas estratégicas, elige aleatoriamente
-        if np.random.rand() < epsilon:
-            self.jugadas_del_agente += 1
-            return np.random.choice(available_cols)
-        else:
-            col = jugar_con_montecarlo(estado)
-            self.jugadas_del_agente += 1
-            return col
+                return int(col)
+
+
+        #despues usar MCTS
+        accion = mcts_search(estado_obj, iterations=100)
+
+        self.episodio_completo.append((estado_actual, accion))
+        self.jugadas_del_agente += 1
+
+        return int(accion)
